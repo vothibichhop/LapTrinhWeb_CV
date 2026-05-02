@@ -5,14 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tư vấn | Mai Trâm Spa</title>
-    <link rel="stylesheet" href="{% static 'css/customer-consultation.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/customer-consultation.css' %}?v=2">
 </head>
 <body>
 {% include 'includes/customer_navbar.html' %}
     <div class="consultation-page">
-
         <main class="consultation-main">
             <section class="faq-board">
+                <!-- GIỮ NGUYÊN FAQ CỦA BẠN -->
                 {% for item in faq_items %}
                 <article class="faq-row faq-item">
                     <div class="faq-question faq-toggle">{{ item.question }}</div>
@@ -22,106 +22,49 @@
 
                 <article class="faq-row faq-item">
                     <div class="faq-question faq-toggle">Da nhạy cảm có thể làm liệu trình massage hoặc chăm sóc mặt không?</div>
-                    <div class="faq-answer">Dạ hoàn toàn được ạ! Tại Mai Trâm Spa, chúng tôi có các sản phẩm chuyên biệt dành riêng cho da nhạy cảm, giúp làm dịu và phục hồi da mà không gây kích ứng.</div>
+                    <div class="faq-answer">Dạ hoàn toàn được ạ! Tại Mai Trâm Spa, chúng tôi có các sản phẩm chuyên biệt dành riêng cho da nhạy cảm.</div>
                 </article>
 
                 <article class="faq-row faq-item">
                     <div class="faq-question faq-toggle">Liệu trình làm trắng da có an toàn cho da nhạy cảm không?</div>
-                    <div class="faq-answer">Các liệu trình tắm trắng tại Spa sử dụng thảo mộc và phi thuyền hồng ngoại hiện đại, không lột tẩy, đảm bảo an toàn tuyệt đối cho mọi loại da.</div>
+                    <div class="faq-answer">Các liệu trình tắm trắng tại Spa sử dụng thảo mộc và phi thuyền hồng ngoại hiện đại, không lột tẩy.</div>
                 </article>
 
                 <article class="faq-row faq-item">
                     <div class="faq-question faq-toggle">Sau khi lăn kim hoặc peel da, tôi cần bao lâu để da phục hồi hoàn toàn?</div>
-                    <div class="faq-answer">Thông thường da sẽ phục hồi sau 5-7 ngày. Chuyên viên sẽ cung cấp cho bạn liệu trình chăm sóc tại nhà để da căng bóng và khỏe mạnh nhanh nhất.</div>
+                    <div class="faq-answer">Thông thường da sẽ phục hồi sau 5-7 ngày.</div>
                 </article>
             </section>
         </main>
 
-        <footer class="footer">
-            <section class="footer-col intro">
-                <h3>Mai Trâm Spa</h3>
-                <p>Nơi vẻ đẹp thăng hoa với các liệu trình chăm sóc da, body và triệt lông theo quy trình chuyên nghiệp.</p>
-                <div class="socials">
-                    <a href="#" aria-label="Facebook">f</a>
-                    <a href="#" aria-label="Instagram">ig</a>
-                    <a href="#" aria-label="Twitter">x</a>
-                </div>
-            </section>
-
-            <section class="footer-col">
-                <h3>Dịch vụ</h3>
-                <p>Chăm sóc da mặt</p>
-                <p>Massage body</p>
-                <p>Triệt lông</p>
-                <p>Điều trị mụn</p>
-                <p>Xông hơi</p>
-            </section>
-
-            <section class="footer-col">
-                <h3>Về chúng tôi</h3>
-                <p>Giới thiệu</p>
-                <p>Đội ngũ</p>
-                <p>Tin tức</p>
-                <p>Liên hệ</p>
-                <p>Tuyển dụng</p>
-            </section>
-
-            <section class="footer-col">
-                <h3>Liên hệ</h3>
-                <p>104/7 Lê Đình Lý, Thanh Khê, Đà Nẵng</p>
-                <p>0901 234 589</p>
-                <p>info@maitram.spa</p>
-            </section>
-        </footer>
-
-        <button class="chat-fab" type="button" data-chat-toggle aria-label="Mo khung tu van">
+        <!-- NÚT HỒNG FAB -->
+        <button class="chat-fab" type="button" id="openChatBtn">
             <span class="chat-fab-icon"></span>
         </button>
 
-        <section class="chat-widget hidden" data-chat-widget>
+        <!-- KHUNG CHAT WIDGET -->
+        <section class="chat-widget hidden" id="chatWidget">
             <header class="chat-header">
-                <div class="chat-agent">
-                    <div class="chat-avatar"></div>
-                    <strong>Mai Trâm Spa</strong>
-                </div>
-                <div class="chat-controls">
-                    <button class="chat-minimize" type="button" data-chat-close>—</button>
-                    <button class="chat-close" type="button" data-chat-close>×</button>
-                </div>
+                <div class="chat-agent"><strong>Mai Trâm Spa</strong></div>
+                <button type="button" id="closeChatBtn">×</button>
             </header>
-
-            <div class="chat-body">
-                <div class="chat-time">Hôm qua 19:45</div>
-
-                {% for item in chat_messages %}
-                <div class="chat-row {{ item.side }}">
-                    {% if item.side == 'left' %}
-                        <div class="chat-row-avatar agent-avatar"></div>
-                        <p class="chat-bubble">{{ item.text }}</p>
-                    {% else %}
-                        <p class="chat-bubble">{{ item.text }}</p>
-                        <div class="chat-row-avatar user-avatar"></div>
-                    {% endif %}
-                </div>
-                {% endfor %}
+            <div class="chat-body chat-thread" id="chatThread">
+                <div class="chat-time" data-chat-empty-warning>Đang kết nối...</div>
             </div>
-
-            <!-- CHỖ NÀY ĐÃ ĐƯỢC THAY BẰNG FORM CHUẨN FIGMA -->
-            <form class="chat-input-row" data-chat-form>
+            <form class="chat-input-row" data-form-type="consultation-send">
+                {% csrf_token %}
                 <div class="input-wrapper">
-                    <input type="text" name="message" placeholder="Nhập tin nhắn">
-                    <button type="submit" aria-label="Gui tin nhan">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ff4d85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    </button>
+                    <input type="text" name="message" placeholder="Nhập tin nhắn..." required>
+                    <button type="submit">Gửi</button>
                 </div>
             </form>
         </section>
     </div>
 
-    <script src="{% static 'js/customer-consultation.js' %}?v=1"></script>
     <script>
         const roomId = "{{ room_id }}";
         const userId = "{{ request.user.id }}";
     </script>
+    <script src="{% static 'js/customer-consultation.js' %}?v=10"></script>
 </body>
 </html>

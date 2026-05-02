@@ -4,9 +4,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tư vấn khách hàng | MAI TRÂM Beauty &amp; Spa</title>
+    <title>Quản lý tư vấn khách hàng | MAI TRÂM Beauty &amp; Spa</title>
     <link rel="stylesheet" href="{% static 'css/service-dashboard.css' %}?v=6">
     <link rel="stylesheet" href="{% static 'css/dashboard-topnav-footer.css' %}?v=1">
+    <style>
+        /* Thêm một chút style để phần in đậm rõ ràng hơn */
+        .consultation-item-card.unread {
+            background-color: #fff9fa;
+            border-left: 4px solid #ff4d85;
+        }
+        .last-message {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
 </head>
 <body>
     <div class="app-shell">
@@ -23,6 +36,7 @@
             </header>
 
             <section class="consultation-shell">
+                <!-- Thanh tìm kiếm -->
                 <form class="consultation-search" method="get">
                     <span class="consultation-search-icon" aria-hidden="true"></span>
                     <input type="text" name="q" value="{{ search }}" placeholder="Tìm kiếm khách hàng...">
@@ -30,23 +44,32 @@
 
                 {% if conversations %}
                 <div class="conversation-list">
-                    {% for item in conversations %}
-                    <a
-                        class="conversation-card {% if forloop.counter <= 3 %}is-unread{% endif %}"
-                        href="{% url 'consultation_detail' item.id %}"
-                        data-conversation-id="{{ item.id }}"
-                    >
-                        <div class="conversation-avatar {{ item.avatar_class }}"></div>
-                        <div class="conversation-content">
-                            <strong>{{ item.name }}</strong>
-                            <span>{{ item.preview }}</span>
-                        </div>
-                        <time>{{ item.time }}</time>
+                    {% for conv in conversations %}
+                    <a href="{% url 'consultation_detail' conv.id %}" style="text-decoration: none; color: inherit; display: block; margin-bottom: 10px;">
+                        <!-- Thêm class 'unread' nếu là tin nhắn mới để đổi màu nền nếu cần -->
+                        <article class="consultation-item-card {% if conv.is_new %}unread{% endif %}" style="display: flex; align-items: center; padding: 15px; border-radius: 8px; transition: background 0.3s;">
+                            <div class="conversation-avatar {{ conv.avatar_class }}"></div>
+
+                            <div class="conversation-info" style="flex: 1; margin-left: 15px;">
+                                <div class="conversation-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                    <!-- Tên khách hàng: In đậm nếu chưa rep (is_new = True) -->
+                                    <h4 style="margin: 0; font-size: 1.1rem; {% if conv.is_new %}font-weight: 800; color: #000;{% else %}font-weight: 500; color: #555;{% endif %}">
+                                        {{ conv.name }}
+                                    </h4>
+                                    <span class="time" style="font-size: 0.85rem; color: #888;">{{ conv.time }}</span>
+                                </div>
+
+                                <!-- Nội dung tin nhắn cuối: In đậm nếu chưa rep -->
+                                <p class="last-message" style="margin: 5px 0 0 0; font-size: 0.95rem; {% if conv.is_new %}font-weight: 600; color: #333;{% else %}font-weight: 400; color: #777;{% endif %}">
+                                    {{ conv.last_message }}
+                                </p>
+                            </div>
+                        </article>
                     </a>
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="consultation-empty-state">
+                <div class="consultation-empty-state" style="text-align: center; padding: 40px; color: #888;">
                     <p>Chưa có yêu cầu tư vấn nào!</p>
                 </div>
                 {% endif %}

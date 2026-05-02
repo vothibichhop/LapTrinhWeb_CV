@@ -1,6 +1,7 @@
 import json
 import random
 import uuid
+from django.views.decorators.http import require_GET, require_POST
 from datetime import date, datetime, timedelta
 from django.utils.text import slugify
 
@@ -20,8 +21,6 @@ from django.urls import reverse
 from django.utils import timezone
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-
-from django.views.decorators.http import require_POST
 
 BOOKING_TIME_SLOTS = [f"{hour:02d}:00" for hour in range(8, 17)]
 
@@ -504,68 +503,51 @@ def get_consultation_data():
 
 @manager_required
 def consultation_dashboard(request):
+    # Lấy toàn bộ phòng chat, sắp xếp cái nào mới nhắn lên đầu
+    rooms = ChatRoom.objects.all().order_by('-updated_at')
+
     conversations = []
-    for room in ChatRoom.objects.filter(is_active=True).order_by('-updated_at'):
-        latest_message = Message.objects.filter(chat_room=room).order_by('-timestamp').first()
-        preview = (latest_message.content[:50] + (
-            '...' if len(latest_message.content) > 50 else '')) if latest_message else "Chưa có tin nhắn"
-        time_str = latest_message.timestamp.strftime('%H:%M') if latest_message else ""
-        customer_name = getattr(room.customer, 'get_full_name', lambda: None)()
-        if not customer_name:
-            customer_name = room.customer.username
+    for room in rooms:
+        # Lấy tin nhắn cuối cùng của phòng này
+        last_msg = Message.objects.filter(chat_room=room).order_by('-timestamp').first()
+
         conversations.append({
             'id': room.id,
-            'name': customer_name,
-            'avatar_class': 'avatar-neutral',
-            'preview': preview,
-            'time': time_str,
+            'name': room.customer.get_full_name() if room.customer.get_full_name() else room.customer.username,
+            'last_message': last_msg.content if last_msg else "Chưa có tin nhắn",
+            'time': last_msg.timestamp.strftime('%H:%M') if last_msg else "",
+            'is_new': bool(last_msg and last_msg.sender != request.user),
+            'avatar_class': "avatar-default"  # Hoặc logic avatar của bạn
         })
 
-    search = request.GET.get("q", "").strip()
-    empty_state = request.GET.get("empty", "") == "1"
-    if search:
-        conversations = [item for item in conversations if search.lower() in item["name"].lower()]
-    if empty_state:
-        conversations = []
-    return render(
-        request,
-        "consultation_dashboard.html",
-        {
-            "conversations": conversations,
-            "search": search,
-        },
-    )
+    return render(request, 'consultation_dashboard.html', {'conversations': conversations})
 
 
 @manager_required
-def consultation_detail(request, conversation_id):
-    room = get_object_or_404(ChatRoom, id=conversation_id)
+def consultation_detail(request, room_id):
+    # 1. Lấy đúng phòng chat từ ID trên thanh địa chỉ
+    room = get_object_or_404(ChatRoom, id=room_id)
+
+    # 2. Lấy lịch sử tin nhắn thật để không bị trống khi vừa vào
     messages = Message.objects.filter(chat_room=room).order_by('timestamp')
-    chat_messages = []
-    for msg in messages:
-        side = 'right' if msg.sender == request.user else 'left'
-        chat_messages.append({
-            'side': side,
-            'text': msg.content,
-            'time': msg.timestamp.strftime('%H:%M'),
+
+    msg_list = []
+    for m in messages:
+        msg_list.append({
+            'text': m.content,
+            'side': 'right' if m.sender == request.user else 'left',
+            'time': m.timestamp.strftime('%H:%M')
         })
 
-    conversation = {
-        'id': room.id,
-        'name': room.customer.username,
-        'avatar_class': 'avatar-neutral',
-        'messages': chat_messages,
+    context = {
+        'room_id': room.id,
+        'conversation': {
+            'name': room.customer.get_full_name() or room.customer.username,
+            'avatar_class': "avatar-default",
+            'messages': msg_list  # Trả dữ liệu thật ở đây để HTML vẽ ra ngay
+        }
     }
-    modal_state = request.GET.get("modal", "")
-    return render(
-        request,
-        "consultation_detail.html",
-        {
-            "conversation": conversation,
-            "modal_state": modal_state,
-            "room_id": room.id,
-        },
-    )
+    return render(request, 'consultation_detail.html', context)
 
 
 @manager_required
@@ -1196,4 +1178,32 @@ def api_create_service(request):
 
     except Exception as e:
         print("=== LỖI CREATE ===", repr(e))
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@require_GET
+def api_get_chat_messages(request, room_id):
+    try:
+        room = get_object_or_404(ChatRoom, id=room_id)
+        messages = Message.objects.filter(chat_room=room).order_by('timestamp')
+        data = [{'id': m.id, 'content': m.content, 'sender_id': m.sender.id, 'time': m.timestamp.strftime('%H:%M')} for
+                m in messages]
+        return JsonResponse({'status': 'success', 'messages': data})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@require_POST
+def api_send_chat_message(request):
+    try:
+        room_id = request.POST.get('room_id')
+        content = request.POST.get('content', '').strip()
+        if not content: return JsonResponse({'status': 'error', 'message': 'Trống'}, status=400)
+
+        room = get_object_or_404(ChatRoom, id=room_id)
+        msg = Message.objects.create(chat_room=room, sender=request.user, content=content)
+        room.updated_at = timezone.now()
+        room.save()
+        return JsonResponse({'status': 'success', 'time': msg.timestamp.strftime('%H:%M')})
+    except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
