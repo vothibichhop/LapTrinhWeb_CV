@@ -177,5 +177,21 @@
     <section class="modal hidden modal-alert" id="success-save-service" aria-hidden="true"><div class="modal-panel alert-panel success-panel"><div class="success-icon"></div><p>Lưu thành công!</p><button type="button" class="primary-btn" data-close-modal>Đóng</button></div></section>
 
     <script src="{% static 'js/service-dashboard.js' %}?v=7"></script>
+<!-- Tìm đoạn vòng lặp hiển thị danh sách -->
+{% for conv in conversations %}
+    <!-- Bọc toàn bộ cái card vào thẻ a -->
+    <a href="{% url 'consultation_detail' conv.id %}" class="consultation-card-link" style="text-decoration: none; color: inherit; display: block;">
+        <article class="consultation-item-card">
+            <div class="conversation-avatar {{ conv.avatar_class }}"></div>
+            <div class="conversation-info">
+                <div class="conversation-header">
+                    <h4>{{ conv.name }}</h4>
+                    <span class="time">{{ conv.time }}</span>
+                </div>
+                <p class="last-message">{{ conv.last_message }}</p>
+            </div>
+        </article>
+    </a>
+{% endfor %}
 </body>
 </html>

@@ -51,11 +51,12 @@
                     <div class="chat-inline-warning hidden" data-chat-empty-warning>Bạn chưa nhập nội dung tư vấn!</div>
 
                     <form class="consultation-input-row" data-form-type="consultation-send">
-                        <input type="text" name="message" placeholder="Nhập nội dung tư vấn...">
-                        <button type="submit" class="chat-send-btn" aria-label="Gửi tin nhắn">
-                            <span class="chat-send-icon" aria-hidden="true"></span>
-                        </button>
-                    </form>
+    {% csrf_token %} <!-- THÊM DÒNG NÀY VÀO ĐÂY -->
+    <input type="text" name="message" placeholder="Nhập nội dung tư vấn...">
+    <button type="submit" class="chat-send-btn" aria-label="Gửi tin nhắn">
+        <span class="chat-send-icon" aria-hidden="true"></span>
+    </button>
+</form>
                 </section>
             </section>
         </main>
@@ -108,10 +109,96 @@
         </div>
     </section>
 
-    <script src="{% static 'js/service-dashboard.js' %}?v=6"></script>
+   <!-- Đảm bảo các biến Django này luôn nằm TRƯỚC file JS -->
     <script>
-        const roomId = {{ room_id }};
-        const userId = {{ request.user.id }};
+    // Phải có dấu nháy kép bao quanh để tránh lỗi định dạng
+    const roomId = "{{ room_id }}";
+    const userId = "{{ request.user.id }}";
+    const avatarClass = "{{ conversation.avatar_class }}";
+    </script>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const chatForm = document.querySelector('form[data-form-type="consultation-send"]');
+        const chatThread = document.querySelector(".chat-thread");
+        const chatInput = chatForm.querySelector('input[name="message"]');
+        let lastMessageCount = 0;
+
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || "";
+        }
+
+        // 1. API LẤY TIN NHẮN THẬT (POLLING)
+        async function fetchMessages() {
+            try {
+                const res = await fetch(`/api/chat/${roomId}/get/`);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    // Nếu số lượng tin nhắn không đổi thì không vẽ lại giao diện
+                    if (data.messages.length === lastMessageCount) return;
+                    lastMessageCount = data.messages.length;
+
+                    // Xóa nội dung cũ, vẽ lại từ Database thật
+                    chatThread.innerHTML = '';
+                    data.messages.forEach(msg => {
+                        const isMe = (msg.sender_id.toString() === userId.toString());
+                        const row = document.createElement("div");
+                        row.className = `chat-row ${isMe ? "right" : "left"}`;
+
+                        if (isMe) {
+                            // Giao diện tin nhắn của Quản lý (bên phải)
+                            row.innerHTML = `
+                                <div class="chat-time">${msg.time}</div>
+                                <div class="chat-bubble solid">${msg.content}</div>
+                                <div class="manager-avatar mini"></div>
+                            `;
+                        } else {
+                            // Giao diện tin nhắn của Khách (bên trái)
+                            row.innerHTML = `
+                                <div class="conversation-avatar tiny ${avatarClass}"></div>
+                                <div class="chat-bubble outline">${msg.content}</div>
+                                <div class="chat-time">${msg.time}</div>
+                            `;
+                        }
+                        chatThread.appendChild(row);
+                    });
+                    // Tự động cuộn xuống dưới cùng
+                    chatThread.scrollTop = chatThread.scrollHeight;
+                }
+            } catch (err) { console.error("Lỗi đồng bộ:", err); }
+        }
+
+        // 2. API GỬI TIN NHẮN THẬT
+        chatForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const content = chatInput.value.trim();
+            if (!content) return;
+
+            const formData = new FormData();
+            formData.append('room_id', roomId);
+            formData.append('content', content);
+
+            try {
+                const res = await fetch('/api/chat/send/', {
+                    method: 'POST',
+                    headers: { "X-CSRFToken": getCsrfToken() },
+                    body: formData
+                });
+                if (res.ok) {
+                    chatInput.value = ""; // Xóa ô nhập sau khi gửi
+                    fetchMessages(); // Cập nhật ngay lập tức
+                } else {
+                    document.getElementById('consultation-send-error-modal').classList.remove('hidden');
+                }
+            } catch (err) { console.error("Lỗi gửi tin:", err); }
+        });
+
+        // 3. THIẾT LẬP REALTIME (2 giây quét 1 lần)
+        fetchMessages();
+        setInterval(fetchMessages, 2000);
+    });
     </script>
     <script src="{% static 'js/customer-consultation.js' %}"></script>
 </body>
